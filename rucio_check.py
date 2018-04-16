@@ -1,6 +1,14 @@
 #! /usr/bin/env python
 
+# rucio_check.py
+# check rucio logile from rucio_Download.py and outputs a summary
+
+import os
 import sys
+
+if len(sys.argv) < 2:
+    print("usage: rucio_check.py [rucio-log-file]")
+    sys.exit(1)
 
 s = open(sys.argv[1]).read()
 
@@ -16,14 +24,14 @@ for index, line in enumerate(lines):
     
     try:
         d = {
-            'name': lines[index+1][4:],
-            'total':  int(lines[index+2].split(':')[1].strip()),
+            'name':       lines[index+1][4:],
+            'total':      int(lines[index+2].split(':')[1].strip()),
             'downloaded': int(lines[index+3].split(':')[1].strip()),
-            'local': int(lines[index+4].split(':')[1].strip()),
-            'error': int(lines[index+5].split(':')[1].strip()),
+            'local':      int(lines[index+4].split(':')[1].strip()),
+            'error':      int(lines[index+5].split(':')[1].strip()),
             }
     except:
-        raise        
+        print('Error: %s' % line)
 
     if len(d['name']) > max_sample_lenght:
         max_sample_lenght = len(d['name'])
@@ -44,20 +52,20 @@ for d in sample_info:
 
     ss = '{name: <%s}: total={total:<3}, downloaded={downloaded: <3}, local={local: <3}, error={error: <3}' % max_sample_lenght
 
-    print ss.format(**d)
+    print(ss.format(**d))
 
 if errors:
-    print '# the following samples have some errors:'
+    print '# The following samples have some errors:'
     for e in errors:
         print e['name']
 else:
-    print '# no errors'
+    print '# No errors'
 
 if empty:
-    print '# the following samples are empty:'
+    print('# The following samples are empty:')
     for e in empty:
-        print e['name']
+        print(e['name'])
 else:
-    print '# no empty samples'
+    print('# No empty samples')
 
 

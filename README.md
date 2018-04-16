@@ -1,1 +1,1 @@
-# bins-lxplus
+# lxplus scripts
