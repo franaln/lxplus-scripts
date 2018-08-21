@@ -41,9 +41,10 @@ parser.add_argument('--sort', dest='sort', default='jeditaskid',  help='Sort by 
 # Other options
 parser.add_argument('--all',   dest='show_all', action='store_true', help='Show the full job dict')
 parser.add_argument('--quiet', dest='show_taskname_only', action='store_true', help='Show taskname only')
-parser.add_argument('--full',  dest='show_full_stats', action='store_true', help='Show full stats for matching jobs')
+parser.add_argument('--stats',  dest='show_full_stats', action='store_true', help='Show full stats for matching jobs')
 
-parser.add_argument('--retry',  dest='retry', action='store_true', help='')
+parser.add_argument('--retry',  dest='retry', action='store_true', help='Retry selected jobs using pbook')
+parser.add_argument('--kill',  dest='kill', action='store_true', help='Kill selected jobs using pbook')
 
 
 args = parser.parse_args()
@@ -125,7 +126,6 @@ def print_full_stats(jobs):
         total_nfiles_failed += int(dsinfo['nfilesfailed'])
         total_nfiles_finished += int(dsinfo['nfilesfinished'])
 
-
     if int(total_nfiles) == 0:
         return
 
@@ -139,7 +139,6 @@ def print_full_stats(jobs):
 
     if int(total_nfiles_failed) > 0:
         job_text += ' (failed: {0: >5})'.format(total_nfiles_failed)
-
 
     print('-'*165)
     if status == 'done':
@@ -196,11 +195,18 @@ if args.print_jobs:
         if args.show_full_stats:
             print_full_stats(jobs)
 
-        if args.retry:
+            
+        if args.retry or args.kill:
             cmd = 'pbook -c "sync()"'
             os.system(cmd)
 
+        if args.retry:
             for j in jobs:
                 cmd = 'pbook -c "retry(%i)"' % j['jeditaskid']
+                os.system(cmd)
+
+        if args.kill:
+            for j in jobs:
+                cmd = 'pbook -c "kill(%i)"' % j['jeditaskid']
                 os.system(cmd)
             

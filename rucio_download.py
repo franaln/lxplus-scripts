@@ -26,8 +26,10 @@ for line in open(input_file).read().split('\n'):
     
     cmd = 'rucio download %s | tee -a %s' % (line, log_file)
 
-    os.system(cmd)
-
+    try:
+        os.system(cmd)
+    except KeyboardInterrupt:
+        raise
 
 print('# Done. Check the logfile using "rucio_check.py" to verify if all samples where downloaded correctly.')
 
