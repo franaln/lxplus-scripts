@@ -175,6 +175,9 @@ if args.print_jobs:
             elif  '|' in args.status:
                 filter_status = args.status.split('|')
                 jobs = [ j for j in jobs if any([ status in j['status'] for status in filter_status ]) ]
+            elif args.status.startswith('~'):
+                filter_status_not = args.status[1:]
+                jobs = [ j for j in jobs if filter_status_not != j['status'] ]
             else:
                 jobs = [ j for j in jobs if args.status in j['status'] ]
 
