@@ -3,28 +3,31 @@
 
 import os
 import sys
+import argparse
 import glob
 
-if len(sys.argv) < 2:
-    print 'usage: merge_samples.py [-f] directories'
-    sys.exit(1)
+parser = argparse.ArgumentParser(description='')
 
-do = False
-if sys.argv[1] == '-f':
-    do = True
-    tomerge = [ i for i in sys.argv[2:] ]
-else:
-    tomerge = [ i for i in sys.argv[1:] ]
+parser.add_argument('files', nargs='+')
+parser.add_argument('-d', dest='do', action='store_true', help='do!')
+parser.add_argument('-f', dest='force', action='store_true', help='use hadd -f')
+
+args = parser.parse_args()
+
+tomerge = args.files
 
 
 for i in tomerge:
 
     target = i.replace('user.falonso.', '')
 
-    cmd = 'hadd %s %s/*root*' % (target, i)
+    if args.force:
+        cmd = 'hadd -f %s %s/*root*' % (target, i)
+    else:
+        cmd = 'hadd %s %s/*root*' % (target, i)
 
     print cmd
-    if do:
+    if args.do:
         os.system(cmd)
 
 

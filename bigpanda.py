@@ -136,7 +136,7 @@ def print_full_stats(jobs):
     perc_finished = 100*total_nfiles_finished/float(total_nfiles)
     perc_failed   = 100*total_nfiles_failed/float(total_nfiles)
 
-    text = 'Full stats >    %i Tasks |  %.2f%% failed | %.2f%% finished' % (len(jobs), perc_failed, perc_finished)
+    text = 'Stats  >   %i Tasks |  %.2f%% failed | %.2f%% finished' % (len(jobs), perc_failed, perc_finished)
     status = 'done' if (total_nfiles == total_nfiles_finished and total_nfiles_failed == 0) else 'running'
 
     job_text = '{0: <136} {1: <15} {2: >5}/{3: >5}'.format(text, status, total_nfiles_finished, total_nfiles)
