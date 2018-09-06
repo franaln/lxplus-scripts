@@ -12,11 +12,11 @@ def usage(name=None):
 
 Download jobs info from BigPanda:
 
-    bigpanda.py --download -u USERNAME [-o jobs.json] [-f filter] [-d days]
+    bigpanda.py -d (--download) [-u USERNAME] [-o jobs.json] [-f filter] [-d days]
 
 Print (filter/sort) jobs:
 
-    bigpanda.py --print [-o jobs.json] [--taskname XXX] [--status done] [--sort taskname]
+    bigpanda.py -p (--print) [-o jobs.json] [--taskname XXX] [--status done] [--sort taskname]
 '''
 
 parser = argparse.ArgumentParser(description='Show jobs from bigpanda', usage=usage())
@@ -122,7 +122,15 @@ def print_full_stats(jobs):
     total_nfiles = 0
     total_nfiles_finished = 0
     total_nfiles_failed = 0
+
+    jobs_done = 0
+    jobs_running = 0
     for j in jobs:
+
+        if j['status'] == 'done':
+            jobs_done += 1
+        elif j['status'] == 'running':
+            jobs_running += 1
 
         dsinfo = j['dsinfo']
 
@@ -136,7 +144,7 @@ def print_full_stats(jobs):
     perc_finished = 100*total_nfiles_finished/float(total_nfiles)
     perc_failed   = 100*total_nfiles_failed/float(total_nfiles)
 
-    text = 'Stats  >   %i Tasks |  %.2f%% failed | %.2f%% finished' % (len(jobs), perc_failed, perc_finished)
+    text = 'Stats  >   %i Jobs | %i running | %i done | %.2f%% failed | %.2f%% finished' % (len(jobs), jobs_running, jobs_done, perc_failed, perc_finished)
     status = 'done' if (total_nfiles == total_nfiles_finished and total_nfiles_failed == 0) else 'running'
 
     job_text = '{0: <136} {1: <15} {2: >5}/{3: >5}'.format(text, status, total_nfiles_finished, total_nfiles)
