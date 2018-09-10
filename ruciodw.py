@@ -22,7 +22,7 @@ for line in open(input_file).read().split('\n'):
         continue
 
     
-    print('# Downloading: %s' % line)
+    print('> Downloading: %s' % line)
     
     cmd = 'rucio download %s | tee -a %s' % (line, log_file)
 
@@ -31,7 +31,7 @@ for line in open(input_file).read().split('\n'):
     except KeyboardInterrupt:
         raise
 
-print('# Done. Check the logfile using "rucio_check.py" to verify if all samples where downloaded correctly.')
+
 
 s = open(log_file).read()
 
@@ -65,6 +65,7 @@ for index, line in enumerate(lines):
 errors = []
 empty  = []
 
+print ''
 print 'rucio summary:'
 print '--------------'
 for d in sample_info:
@@ -79,18 +80,19 @@ for d in sample_info:
     print(ss.format(**d))
 
 if errors:
-    print '# The following samples have some errors:'
+    print('> The following samples have some errors:')
     for e in errors:
-        print e['name']
+        print('\033[0;31m%s\033[0m' % e['name'])
 else:
-    print '# No errors'
+    print('\033[0;32m> No errors\033[0m')
 
 if empty:
-    print('# The following samples are empty:')
+    print('> The following samples are empty:')
     for e in empty:
-        print(e['name'])
+        print('\033[0;31m%s\033[0m' % e['name'])
 else:
-    print('# No empty samples')
+    print('\033[0;32m> No empty samples\033[0m')
+
 
 
 
