@@ -12,7 +12,7 @@ def usage(name=None):
 
 Download jobs info from BigPanda:
 
-    bigpanda.py -d (--download) [-u USERNAME] [-o jobs.json] [-f filter] [-d days]
+    bigpanda.py -d (--download) [-u USERNAME] [-o jobs.json] [-f filter] [--days days]
 
 Print (filter/sort) jobs:
 
