@@ -50,6 +50,7 @@ parser.add_argument('--kill',  dest='kill', action='store_true', help='Kill sele
 parser.add_argument('--dw', dest='show_taskname_only', action='store_true', help='Show taskname only')
 parser.add_argument('--ext', dest='output_extension', help='Add extension to taskname (for download file)')
 
+parser.add_argument('--links', dest='show_links', action='store_true', help='Show bigpanda links')
 
 args = parser.parse_args()
 
@@ -96,7 +97,7 @@ if args.download_jobs:
 
 
 # Show jobs
-def print_job(j):
+def print_job(j, show_link=False):
 
     dsinfo = j['dsinfo']
 
@@ -108,6 +109,9 @@ def print_job(j):
 
     if int(nfiles_failed) > 0:
         job_text += ' (failed: {0: >5})'.format(nfiles_failed)
+
+    if show_link:
+        job_text += ' (https://bigpanda.cern.ch/task/%s)' % j['jeditaskid']
 
     if j['status'] == 'done':
         print('\033[0;32m%s\033[0m' % job_text)
@@ -177,7 +181,7 @@ if args.print_jobs:
                 jobs = [ j for j in jobs if any([ taskname in j['taskname'] for taskname in filter_taskname ]) ]
             else:
                 jobs = [ j for j in jobs if args.taskname in j['taskname'] ]
-            
+
 
         # Filter status
         if args.status is not None:
@@ -210,13 +214,14 @@ if args.print_jobs:
                     print(task_name+args.output_extension)
                 else:
                     print(task_name)
+
             else:
-                print_job(j)
+                print_job(j, args.show_links)
 
         if args.show_full_stats:
             print_full_stats(jobs)
 
-            
+
         if args.retry or args.kill:
             cmd = 'pbook -c "sync()"'
             os.system(cmd)
@@ -230,4 +235,4 @@ if args.print_jobs:
             for j in jobs:
                 cmd = 'pbook -c "kill(%i)"' % j['jeditaskid']
                 os.system(cmd)
-            
+
