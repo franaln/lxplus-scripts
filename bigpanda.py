@@ -5,25 +5,25 @@ import sys
 import json
 import argparse
 import subprocess
+from datetime import datetime
 
 def usage(name=None):
     return '''bigpanda.py
 -----------
 
-Download jobs info from BigPanda:
+Download usage:
 
-    bigpanda.py -d (--download) [-u USERNAME] [-o jobs.json] [-f filter] [--days days]
+    bigpanda.py -d [-u USERNAME] [-o jobs.json] [-f "user.username.*"] [--days days]
 
-Print (filter/sort) jobs:
+Print/Filter/Sort usage:
 
-    bigpanda.py -p (--print) [-o jobs.json] [--taskname XXX] [--status done] [--sort taskname]
+    bigpanda.py [-o jobs.json] [-n|--taskname XXX] [-s|--status done] [--sort taskname]
 '''
 
 parser = argparse.ArgumentParser(description='Show jobs from bigpanda', usage=usage())
 
 parser.add_argument('-o', dest='jobs_file', default='jobs.json',  help='Jobs file (default: jobs.json)')
-parser.add_argument('-d', '--download', dest='download_jobs', action='store_true', help='Download jobs from bigpanda')
-parser.add_argument('-p', '--print', dest='print_jobs', action='store_true', help='Show jobs from bigpanda')
+parser.add_argument('-d', '--download', dest='download_jobs', action='store_true', help='Force download of jobs information from bigpanda')
 
 # Bigpanda download
 parser.add_argument('-u', dest='username', default=os.environ['USER'], help='Username')
@@ -54,29 +54,29 @@ parser.add_argument('--links', dest='show_links', action='store_true', help='Sho
 
 args = parser.parse_args()
 
-if not args.download_jobs and not args.print_jobs:
-    print(usage())
-    sys.exit(0)
-
 
 jobs_file = args.jobs_file
 
 # Dowload jobs
-if args.download_jobs:
+cookie_file = 'bigpanda.cookie.txt'
 
-    if os.path.isfile(jobs_file):
-        os.system('rm %s' % jobs_file)
+need_download = False
+if args.download_jobs or not os.path.isfile(jobs_file):
+    need_download = True
+else:
+    jobs_file_old = (datetime.now() - datetime.fromtimestamp(os.path.getmtime(jobs_file))).total_seconds()
+    if jobs_file_old > 300:
+        need_download = True
 
+
+if need_download:
     in_lxplus = ('HOSTNAME' in os.environ and '.cern.ch' in os.environ['HOSTNAME'])
 
     # Download cookie
-    if in_lxplus:
-        cmd1 = 'cern-get-sso-cookie -u https://bigpanda.cern.ch/ -o bigpanda.cookie.txt;'
-    else:
-        cmd1 = 'ssh {USERNAME}@lxplus.cern.ch "cern-get-sso-cookie -u https://bigpanda.cern.ch/ -o bigpanda.cookie.txt;"'.format(USERNAME=args.username)
-
-    os.system(cmd1)
-
+    if not in_lxplus:
+        os.system('ssh {USERNAME}@lxplus.cern.ch "cern-get-sso-cookie -u https://bigpanda.cern.ch/ -o bigpanda.cookie.txt;"'.format(USERNAME=args.username))
+    elif not os.path.isfile('bigpanda.cookie.txt'):
+        os.system('cern-get-sso-cookie -u https://bigpanda.cern.ch/ -o bigpanda.cookie.txt;')
 
     # Download jobs data
     filter_str = 'user.%s*' % args.username if args.download_filter is None else args.download_filter
@@ -92,7 +92,6 @@ if args.download_jobs:
 
     with open(jobs_file, 'w') as f:
         f.write(output)
-
 
 
 
@@ -165,74 +164,73 @@ def print_full_stats(jobs):
         print(job_text)
 
 
-if args.print_jobs:
+# Print jobs
+with open(jobs_file) as f:
 
-    with open(jobs_file) as f:
+    jobs = json.load(f)
 
-        jobs = json.load(f)
+    # Filter task name
+    if args.taskname is not None:
+        if '&&' in args.taskname:
+            filter_taskname = args.taskname.split('&&')
+            jobs = [ j for j in jobs if all([ taskname.strip() in j['taskname'] for taskname in filter_taskname ]) ]
+        elif  '||' in args.taskname:
+            filter_taskname = args.taskname.split('||')
+            jobs = [ j for j in jobs if any([ taskname.strip() in j['taskname'] for taskname in filter_taskname ]) ]
+        else:
+            jobs = [ j for j in jobs if args.taskname in j['taskname'] ]
 
-        # Filter task name
-        if args.taskname is not None:
-            if '&' in args.taskname:
-                filter_taskname = args.taskname.split('&')
-                jobs = [ j for j in jobs if all([ taskname in j['taskname'] for taskname in filter_taskname ]) ]
-            elif  '|' in args.taskname:
-                filter_taskname = args.taskname.split('|')
-                jobs = [ j for j in jobs if any([ taskname in j['taskname'] for taskname in filter_taskname ]) ]
+
+    # Filter status
+    if args.status is not None:
+        if '&&' in args.status:
+            filter_status = args.status.split('&&')
+            jobs = [ j for j in jobs if all([ status.strip() in j['status'] for status in filter_status ]) ]
+        elif  '||' in args.status:
+            filter_status = args.status.split('||')
+            jobs = [ j for j in jobs if any([ status.strip() in j['status'] for status in filter_status ]) ]
+        elif args.status.startswith('~'):
+            filter_status_not = args.status[1:]
+            jobs = [ j for j in jobs if filter_status_not != j['status'] ]
+        else:
+            jobs = [ j for j in jobs if args.status in j['status'] ]
+
+    # Filter taksID
+    if args.taskid is not None:
+        jobs = [ j for j in jobs if args.taskid == str(j['jeditaskid']) ]
+
+
+    # Show jobs
+    for j in sorted(jobs, key=lambda t: t[args.sort]):
+        if args.show_all:
+            print(j)
+        elif args.show_taskname_only:
+            task_name = j['taskname']
+            if args.output_extension:
+                if task_name.endswith('/'):
+                    task_name = task_name[:-1]
+                print(task_name+args.output_extension)
             else:
-                jobs = [ j for j in jobs if args.taskname in j['taskname'] ]
+                print(task_name)
+
+        else:
+            print_job(j, args.show_links)
+
+    if args.show_full_stats:
+        print_full_stats(jobs)
 
 
-        # Filter status
-        if args.status is not None:
-            if '&' in args.status:
-                filter_status = args.status.split('&')
-                jobs = [ j for j in jobs if all([ status in j['status'] for status in filter_status ]) ]
-            elif  '|' in args.status:
-                filter_status = args.status.split('|')
-                jobs = [ j for j in jobs if any([ status in j['status'] for status in filter_status ]) ]
-            elif args.status.startswith('~'):
-                filter_status_not = args.status[1:]
-                jobs = [ j for j in jobs if filter_status_not != j['status'] ]
-            else:
-                jobs = [ j for j in jobs if args.status in j['status'] ]
+    if args.retry or args.kill:
+        cmd = 'pbook -c "sync()"'
+        os.system(cmd)
 
-        # Filter taksID
-        if args.taskid is not None:
-            jobs = [ j for j in jobs if args.taskid == str(j['jeditaskid']) ]
-
-
-        # Show jobs
-        for j in sorted(jobs, key=lambda t: t[args.sort]):
-            if args.show_all:
-                print(j)
-            elif args.show_taskname_only:
-                task_name = j['taskname']
-                if args.output_extension:
-                    if task_name.endswith('/'):
-                        task_name = task_name[:-1]
-                    print(task_name+args.output_extension)
-                else:
-                    print(task_name)
-
-            else:
-                print_job(j, args.show_links)
-
-        if args.show_full_stats:
-            print_full_stats(jobs)
-
-
-        if args.retry or args.kill:
-            cmd = 'pbook -c "sync()"'
+    if args.retry:
+        for j in jobs:
+            cmd = 'pbook -c "retry(%i)"' % j['jeditaskid']
             os.system(cmd)
 
-        if args.retry:
-            for j in jobs:
-                cmd = 'pbook -c "retry(%i)"' % j['jeditaskid']
-                os.system(cmd)
-
-        if args.kill:
-            for j in jobs:
-                cmd = 'pbook -c "kill(%i)"' % j['jeditaskid']
-                os.system(cmd)
+    if args.kill:
+        for j in jobs:
+            cmd = 'pbook -c "kill(%i)"' % j['jeditaskid']
+            os.system(cmd)
 
