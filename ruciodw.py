@@ -5,8 +5,9 @@
 
 import os
 import sys
+import argparse
 
-def download(input_file, log_file):
+def download(input_file, log_file, ext=''):
 
 
     os.system('rm -f %s' % log_file)
@@ -16,9 +17,14 @@ def download(input_file, log_file):
         if not line or line.startswith('#'):
             continue
 
-        print('> Downloading: %s' % line)
+        if line.endswith('/'):
+            line = line[:-1]
 
-        cmd = 'rucio download %s | tee -a %s' % (line, log_file)
+        sample = '%s%s' % (line, ext)
+
+        print('> Downloading: %s' % sample)
+
+        cmd = 'rucio download %s | tee -a %s' % (sample, log_file)
 
         os.system(cmd)
 
@@ -106,21 +112,29 @@ def check(log_file):
 
 
 
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description='ruciodw')
+
+    parser.add_argument('filepath', nargs='?')
+    parser.add_argument('-t', '--type', action='store_true', help='Show object type')
+    parser.add_argument('--ext', default='', help='Extension')
+
+    if len(sys.argv) < 2:
+        parser.print_usage()
+        sys.exit(1)
+
+    args = parser.parse_args()
 
 
+    input_file = args.filepath
+    log_file = input_file + '.log'
 
-if len(sys.argv) < 2:
-    print("usage: ruciodw.py [file-with-samples-to-download]")
-    sys.exit(1)
-
-input_file = sys.argv[1]
-log_file = input_file + '.log'
-
-try:
-    download(input_file, log_file)
-    check(log_file)
-except KeyboardInterrupt:
-    raise
+    try:
+        download(input_file, log_file, args.ext)
+        check(log_file)
+    except KeyboardInterrupt:
+        raise
 
 
 

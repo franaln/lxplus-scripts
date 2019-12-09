@@ -22,7 +22,7 @@ Print/Filter/Sort usage:
 
 parser = argparse.ArgumentParser(description='Show jobs from bigpanda', usage=usage())
 
-parser.add_argument('-o', dest='jobs_file', default='jobs.json',  help='Jobs file (default: jobs.json)')
+parser.add_argument('-o', dest='jobs_file', help='Jobs file (default: ~/jobs.json)')
 parser.add_argument('-d', '--download', dest='download_jobs', action='store_true', help='Force download of jobs information from bigpanda')
 
 # Bigpanda download
@@ -34,6 +34,7 @@ parser.add_argument('--days', dest='days_filter', default='7', help='Download ta
 parser.add_argument('-i', '--taskid',   dest='taskid',   help='Filter by taskid')
 parser.add_argument('-n', '--taskname', dest='taskname', help='Filter by taskname')
 parser.add_argument('-s', '--status',   dest='status',   help='Filter by status')
+parser.add_argument('--invtaskname', dest='invtaskname', help='')
 
 # Sort
 parser.add_argument('--sort', dest='sort', default='jeditaskid',  help='Sort by taskname/status (default: jeditaskid)')
@@ -51,15 +52,21 @@ parser.add_argument('--dw', dest='show_taskname_only', action='store_true', help
 parser.add_argument('--ext', dest='output_extension', help='Add extension to taskname (for download file)')
 
 parser.add_argument('--links', dest='show_links', action='store_true', help='Show bigpanda links')
+parser.add_argument('--list',  dest='list', action='store_true', help='Show id lists')
+
+#
+parser.add_argument('--mask',  dest='mask', action='store_true', help='Mask selected jobs to not show anymore (useful for broken jobs)')
 
 args = parser.parse_args()
 
 
-jobs_file = args.jobs_file
+
+cookie_file = os.path.expanduser('~/.bigpanda.cookie.txt')
+jobs_file = os.path.expanduser('~/.jobs.json') if args.jobs_file is None else args.jobs_file
+jobs_masked_file = os.path.expanduser('~/.jobs_masked.txt')
+
 
 # Dowload jobs
-cookie_file = 'bigpanda.cookie.txt'
-
 need_download = False
 if args.download_jobs or not os.path.isfile(jobs_file):
     need_download = True
@@ -74,16 +81,16 @@ if need_download:
 
     # Download cookie
     if not in_lxplus:
-        os.system('ssh {USERNAME}@lxplus.cern.ch "cern-get-sso-cookie -u https://bigpanda.cern.ch/ -o bigpanda.cookie.txt;"'.format(USERNAME=args.username))
+        os.system('ssh {USERNAME}@lxplus.cern.ch "cern-get-sso-cookie -u https://bigpanda.cern.ch/ -o {COOKIE_FILE};"'.format(USERNAME=args.username, COOKIE_FILE=cookie_file))
     elif not os.path.isfile('bigpanda.cookie.txt'):
-        os.system('cern-get-sso-cookie -u https://bigpanda.cern.ch/ -o bigpanda.cookie.txt;')
+        os.system('cern-get-sso-cookie -u https://bigpanda.cern.ch/ -o {COOKIE_FILE};'.format(COOKIE_FILE=cookie_file))
 
     # Download jobs data
     filter_str = 'user.%s*' % args.username if args.download_filter is None else args.download_filter
     if in_lxplus:
-        cmd2 = 'curl --progress-bar -b ~/bigpanda.cookie.txt -H \'Accept: application/json\' -H \'Content-Type: application/json\' "https://bigpanda.cern.ch/tasks/?taskname={0}&days={1}&json"'.format(filter_str, args.days_filter)
+        cmd2 = 'curl --progress-bar -b {COOKIE_FILE} -H \'Accept: application/json\' -H \'Content-Type: application/json\' "https://bigpanda.cern.ch/tasks/?taskname={TASK}&days={DAYS}&json"'.format(COOKIE_FILE=cookie_file, TASK=filter_str, DAYS=args.days_filter)
     else:
-        cmd2 = 'ssh {0}@lxplus.cern.ch "curl -b ~/bigpanda.cookie.txt -H \'Accept: application/json\' -H \'Content-Type: application/json\' "https://bigpanda.cern.ch/tasks/?taskname={1}&days={2}\&json""'.format(args.username, filter_str, args.days_filter)
+        cmd2 = 'ssh {USER}@lxplus.cern.ch "curl -b {COOKIE_FILE} -H \'Accept: application/json\' -H \'Content-Type: application/json\' "https://bigpanda.cern.ch/tasks/?taskname={TASK}&days={DAYS}\&json""'.format(USER=args.username, COOKIE_FILE=cookie_file, TASK=filter_str, DAYS=args.days_filter)
 
     output = subprocess.check_output(cmd2, shell=True)
 
@@ -128,12 +135,18 @@ def print_full_stats(jobs):
 
     jobs_done = 0
     jobs_running = 0
+    jobs_finished = 0
+    jobs_broken = 0
     for j in jobs:
 
         if j['status'] == 'done':
             jobs_done += 1
         elif j['status'] == 'running':
             jobs_running += 1
+        elif j['status'] == 'finished':
+            jobs_finished += 1
+        elif j['status'] == 'broken':
+            jobs_broken += 1
 
         dsinfo = j['dsinfo']
 
@@ -147,7 +160,7 @@ def print_full_stats(jobs):
     perc_finished = 100*total_nfiles_finished/float(total_nfiles)
     perc_failed   = 100*total_nfiles_failed/float(total_nfiles)
 
-    text = 'Stats  >   %i Jobs | %i running | %i done | %.2f%% failed | %.2f%% finished' % (len(jobs), jobs_running, jobs_done, perc_failed, perc_finished)
+    text = 'Stats  >   %i Jobs | %i running | %i broken | %i finished | %i done || Files: %.2f%% failed | %.2f%% finished' % (len(jobs), jobs_running, jobs_broken, jobs_finished, jobs_done, perc_failed, perc_finished)
     status = 'done' if (total_nfiles == total_nfiles_finished and total_nfiles_failed == 0) else 'running'
 
     job_text = '{0: <136} {1: <15} {2: >5}/{3: >5}'.format(text, status, total_nfiles_finished, total_nfiles)
@@ -165,9 +178,20 @@ def print_full_stats(jobs):
 
 
 # Print jobs
+masked_jobs = []
+if os.path.isfile(jobs_masked_file):
+    with open(jobs_masked_file) as f:
+        lines  = f.read().split('\n')
+        for line in lines:
+            if line:
+                masked_jobs.append(int(line))
+
 with open(jobs_file) as f:
 
     jobs = json.load(f)
+
+    # Filter masked jobs
+    jobs = [ j for j in jobs if j['jeditaskid'] not in masked_jobs ]
 
     # Filter task name
     if args.taskname is not None:
@@ -180,6 +204,9 @@ with open(jobs_file) as f:
         else:
             jobs = [ j for j in jobs if args.taskname in j['taskname'] ]
 
+    if args.invtaskname is not None:
+        jobs = [ j for j in jobs if args.invtaskname not in j['taskname'] ]
+        
 
     # Filter status
     if args.status is not None:
@@ -201,24 +228,34 @@ with open(jobs_file) as f:
 
 
     # Show jobs
-    for j in sorted(jobs, key=lambda t: t[args.sort]):
-        if args.show_all:
-            print(j)
-        elif args.show_taskname_only:
-            task_name = j['taskname']
-            if args.output_extension:
-                if task_name.endswith('/'):
-                    task_name = task_name[:-1]
-                print(task_name+args.output_extension)
+    jobs = sorted(jobs, key=lambda t: t[args.sort])
+
+    if args.list:
+        print('[%s]' % ', '.join(['%s' % j['jeditaskid'] for j in jobs]))
+    else:
+        for j in jobs:
+            if args.show_all:
+                print(j)
+            elif args.show_taskname_only:
+                task_name = j['taskname']
+                if args.output_extension:
+                    if task_name.endswith('/'):
+                        task_name = task_name[:-1]
+                    print(task_name+args.output_extension)
+                else:
+                    print(task_name)
+
             else:
-                print(task_name)
+                print_job(j, args.show_links)
 
-        else:
-            print_job(j, args.show_links)
+        if args.show_full_stats:
+            print_full_stats(jobs)
 
-    if args.show_full_stats:
-        print_full_stats(jobs)
 
+    if args.mask:
+        with open(jobs_masked_file, 'a+') as f:
+            for j in jobs:
+                f.write('%i\n' % j['jeditaskid'])
 
     if args.retry or args.kill:
         cmd = 'pbook -c "sync()"'
@@ -233,4 +270,3 @@ with open(jobs_file) as f:
         for j in jobs:
             cmd = 'pbook -c "kill(%i)"' % j['jeditaskid']
             os.system(cmd)
-
