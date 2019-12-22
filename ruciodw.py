@@ -9,7 +9,6 @@ import argparse
 
 def download(input_file, log_file, ext=''):
 
-
     os.system('rm -f %s' % log_file)
 
     for line in open(input_file).read().split('\n'):
@@ -27,6 +26,7 @@ def download(input_file, log_file, ext=''):
         cmd = 'rucio download %s | tee -a %s' % (sample, log_file)
 
         os.system(cmd)
+
 
 
 def check(log_file):
@@ -117,7 +117,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='ruciodw')
 
     parser.add_argument('filepath', nargs='?')
-    parser.add_argument('-t', '--type', action='store_true', help='Show object type')
     parser.add_argument('--ext', default='', help='Extension')
 
     if len(sys.argv) < 2:
@@ -130,11 +129,15 @@ if __name__ == '__main__':
     input_file = args.filepath
     log_file = input_file + '.log'
 
+    os.system('voms-proxy-init -voms atlas')
+
     try:
         download(input_file, log_file, args.ext)
-        check(log_file)
     except KeyboardInterrupt:
         raise
+
+    if os.path.isfile(log_file):
+        check(log_file)
 
 
 
