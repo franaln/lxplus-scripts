@@ -152,13 +152,14 @@ def print_job(j, show_link=False):
     nfiles_failed = dsinfo['nfilesfailed']
     nfiles_finished = dsinfo['nfilesfinished']
 
-    job_text = '{0: <10} {1: <125} {2: <15} {3: >5}/{4: >5}'.format(j['jeditaskid'], j['taskname'], j['status'], nfiles_finished, nfiles)
+    if show_link:
+        job_text = 'https://bigpanda.cern.ch/task/{0: <10} {1: <110} {2: <12} {3: >5}/{4: >5}'.format(j['jeditaskid'], j['taskname'], j['status'], nfiles_finished, nfiles)
+    else:
+        job_text = '{0: <10} {1: <110} {2: <12} {3: >5}/{4: >5}'.format(j['jeditaskid'], j['taskname'], j['status'], nfiles_finished, nfiles)
 
     if int(nfiles_failed) > 0:
-        job_text += ' (failed: {0: >5})'.format(nfiles_failed)
+        job_text += ' (failed: {0: >4})'.format(nfiles_failed)
 
-    if show_link:
-        job_text += ' (https://bigpanda.cern.ch/task/%s)' % j['jeditaskid']
 
     if j['status'] == 'done':
         print('\033[0;32m%s\033[0m' % job_text)
