@@ -49,7 +49,7 @@ parser.add_argument('--retry',  dest='retry', action='store_true', help='Retry s
 parser.add_argument('--kill',  dest='kill', action='store_true', help='Kill selected jobs using pbook')
 
 ## for download
-parser.add_argument('--dw', dest='show_taskname_only', action='store_true', help='Show taskname only')
+parser.add_argument('--dw', dest='download_list', action='store_true', help='Show taskname only')
 parser.add_argument('--ext', dest='output_extension', help='Add extension to taskname (for download file)')
 parser.add_argument('--list',  dest='show_list', action='store_true', help='Show id lists')
 
@@ -264,14 +264,17 @@ with open(jobs_file) as f:
         for j in jobs:
             if args.show_all:
                 print(j)
-            elif args.show_taskname_only:
+            elif args.download_list:
                 task_name = j['taskname']
                 if args.output_extension:
                     if task_name.endswith('/'):
                         task_name = task_name[:-1]
-                    print(task_name+args.output_extension)
-                else:
+                    task_name = task_name + args.output_extension
+
+                if j['status'] == 'done':
                     print(task_name)
+                else:
+                    print('# (%s) %s' % (j['status'], task_name))
 
             else:
                 print_job(j, args.show_links)
