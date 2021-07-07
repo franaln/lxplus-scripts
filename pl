@@ -43,7 +43,7 @@ def publink(fpath):
         #     cmd = 'convert "%s" "%s/%s"' % (fpath, dir_, pngname)
         #     os.system(cmd)
         # else:
-        print 'https://%s.web.cern.ch/%s/public/%s/%s' % (username, username, daytag, newname) 
+        print('https://%s.web.cern.ch/%s/public/%s/%s' % (username, username, daytag, newname))
     
     elif os.path.isdir(fpath):
 
@@ -71,13 +71,13 @@ def publink(fpath):
 
             create_index([ os.path.basename(pdf) for pdf in all_pdfs ], www_dir, index_path)
 
-            print 'https://%s.web.cern.ch/%s/public/%s/%s/index.html' % (username, username, daytag, newname) 
+            print('https://%s.web.cern.ch/%s/public/%s/%s/index.html' % (username, username, daytag, newname))
     
         else:
-            print 'https://%s.web.cern.ch/%s/public/%s/%s' % (username, username, daytag, newname) 
+            print('https://%s.web.cern.ch/%s/public/%s/%s' % (username, username, daytag, newname))
 
     else: 
-        print 'publink: ignoring %s' % fpath
+        print('publink: ignoring %s' % fpath)
     
 
 

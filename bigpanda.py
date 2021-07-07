@@ -158,7 +158,7 @@ def print_job(j, show_link=False):
         job_text = '{0: <10} {1: <110} {2: <12} {3: >5}/{4: >5}'.format(j['jeditaskid'], j['taskname'], j['status'], nfiles_finished, nfiles)
 
     if int(nfiles_failed) > 0:
-        job_text += ' (failed: {0: >4})'.format(nfiles_failed)
+        job_text += ' (failed: {0: >5})'.format(nfiles_failed)
 
 
     if j['status'] == 'done':
@@ -175,20 +175,24 @@ def print_full_stats(jobs):
     total_nfiles_finished = 0
     total_nfiles_failed = 0
 
-    jobs_done = 0
-    jobs_running = 0
+    jobs_done     = 0
+    jobs_running  = 0
     jobs_finished = 0
-    jobs_broken = 0
+    jobs_broken   = 0
+    jobs_failed   = 0
     for j in jobs:
 
-        if j['status'] == 'done':
+        status = j['status']
+        if status == 'done':
             jobs_done += 1
-        elif j['status'] == 'running':
+        elif status == 'running':
             jobs_running += 1
-        elif j['status'] == 'finished':
+        elif status == 'finished':
             jobs_finished += 1
-        elif j['status'] == 'broken':
+        elif status == 'broken':
             jobs_broken += 1
+        elif status == 'failed':
+            jobs_failed += 1
 
         dsinfo = j['dsinfo']
 
@@ -202,15 +206,15 @@ def print_full_stats(jobs):
     perc_finished = 100*total_nfiles_finished/float(total_nfiles)
     perc_failed   = 100*total_nfiles_failed/float(total_nfiles)
 
-    text = 'Stats  >   %i Jobs | %i running | %i broken | %i finished | %i done || Files: %.2f%% failed | %.2f%% finished' % (len(jobs), jobs_running, jobs_broken, jobs_finished, jobs_done, perc_failed, perc_finished)
+    text = 'Stats  >   %i Jobs | %i running | %i broken | %i failed | %i finished | %i done || Files: %.2f%% failed | %.2f%% finished' % (len(jobs), jobs_running, jobs_broken, jobs_failed, jobs_finished, jobs_done, perc_failed, perc_finished)
     status = 'done' if (total_nfiles == total_nfiles_finished and total_nfiles_failed == 0) else 'running'
 
-    job_text = '{0: <136} {1: <15} {2: >5}/{3: >5}'.format(text, status, total_nfiles_finished, total_nfiles)
+    job_text = '{0: <121} {1: <12} {2: >5}/{3: >5}'.format(text, status, total_nfiles_finished, total_nfiles)
 
     if int(total_nfiles_failed) > 0:
         job_text += ' (failed: {0: >5})'.format(total_nfiles_failed)
 
-    print('-'*165)
+    print('-'*163)
     if status == 'done':
         print('\033[0;32m%s\033[0m' % job_text)
     elif int(total_nfiles_failed) > 0:
@@ -247,7 +251,6 @@ with open(jobs_file) as f:
     # Filter taksID
     if args.taskid is not None:
         jobs = [ j for j in jobs if args.taskid == str(j['jeditaskid']) ]
-
 
     # Show jobs
     jobs = sorted(jobs, key=lambda t: t[args.sort])

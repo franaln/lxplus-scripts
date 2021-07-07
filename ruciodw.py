@@ -7,9 +7,9 @@ import os
 import sys
 import argparse
 
-def download(input_file, log_file, ext=''):
+def get_download_samples(input_file, ext=''):
 
-    os.system('rm -f %s' % log_file)
+    samples = []
 
     for line in open(input_file).read().split('\n'):
 
@@ -20,22 +20,34 @@ def download(input_file, log_file, ext=''):
             line = line[:-1]
 
         sample = '%s%s' % (line, ext)
+        
+        samples.append(sample)
+
+    return samples
+
+
+def download(input_file, log_file, ext=''):
+
+    os.system('rm -f %s' % log_file)
+
+    for sample in get_download_samples(input_file, ext):
 
         print('> Downloading: %s' % sample)
 
         cmd = 'rucio download %s | tee -a %s' % (sample, log_file)
-
         os.system(cmd)
 
 
 
-def check(log_file):
+def check(input_file, log_file, ext):
+
+    samples = get_download_samples(input_file, ext)
 
     s = open(log_file).read()
 
     lines = s.split('\n')
 
-    sample_info = []
+    sample_info = dict()
 
     max_sample_lenght = 0
     for index, line in enumerate(lines):
@@ -44,20 +56,23 @@ def check(log_file):
             continue
 
         try:
-            d = {
-                'name':       lines[index+1][4:],
-                'total':      int(lines[index+2].split(':')[1].strip()),
-                'downloaded': int(lines[index+3].split(':')[1].strip()),
-                'local':      int(lines[index+4].split(':')[1].strip()),
-                'error':      int(lines[index+5].split(':')[1].strip()),
+            name = lines[index+1][4:]
+
+            if ':' in name:
+                _, name = name.split(':')
+
+            sample_info[name] = {
+                'name':       name,
+                'total':      int(lines[index+2].split(':')[1].strip()), # total
+                'downloaded': int(lines[index+3].split(':')[1].strip()), # downloaded
+                'local':      int(lines[index+4].split(':')[1].strip()), # local
+                'error':      int(lines[index+5].split(':')[1].strip()), # error
                 }
         except:
             print('Error: %s' % line)
 
-        if len(d['name']) > max_sample_lenght:
-            max_sample_lenght = len(d['name'])
-
-        sample_info.append(d)
+        if len(name) > max_sample_lenght:
+            max_sample_lenght = len(name)
 
 
     errors = []
@@ -65,7 +80,7 @@ def check(log_file):
 
     s = {
         'total': 0,
-        'downloaded': 0,
+        'downloaded': 0, 
         'local': 0,
         'error': 0,
         }
@@ -73,7 +88,19 @@ def check(log_file):
     print ''
     print 'rucio summary:'
     print '--------------'
-    for d in sample_info:
+    for name in samples:
+
+        if name in sample_info:
+            d = sample_info[name]
+        else:
+            d = {
+                'name': name,
+                'total': 0,
+                'downloaded': 0, 
+                'local': 0,
+                'error': 1,
+            }
+
         if d['error'] > 0 or d['local'] + d['downloaded'] < d['total']:
             errors.append(d)
 
@@ -118,6 +145,7 @@ if __name__ == '__main__':
 
     parser.add_argument('filepath', nargs='?')
     parser.add_argument('--ext', default='', help='Extension')
+    parser.add_argument('--check', action='store_true')
 
     if len(sys.argv) < 2:
         parser.print_usage()
@@ -129,15 +157,17 @@ if __name__ == '__main__':
     input_file = args.filepath
     log_file = input_file + '.log'
 
-    os.system('voms-proxy-init -voms atlas')
 
-    try:
-        download(input_file, log_file, args.ext)
-    except KeyboardInterrupt:
-        raise
+    if not args.check:
+        os.system('voms-proxy-init -voms atlas')
+
+        try:
+            download(input_file, log_file, args.ext)
+        except KeyboardInterrupt:
+            raise
 
     if os.path.isfile(log_file):
-        check(log_file)
+        check(input_file, log_file, args.ext)
 
 
 
