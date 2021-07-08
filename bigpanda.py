@@ -290,9 +290,9 @@ with open(jobs_file) as f:
 
 
     # Use pbook to kill or retry (not working now  :/)
-    if args.retry or args.kill:
-        cmd = 'pbook -c "sync()"'
-        os.system(cmd)
+    # if args.retry or args.kill:
+    #     cmd = 'pbook -c "sync()"'
+    #     os.system(cmd)
 
     if args.retry:
         for j in jobs:
