@@ -157,7 +157,7 @@ if __name__ == '__main__':
     log_file = input_file + '.log'
 
 
-    st = os.system('which rucio > > /dev/null 2>&1')
+    st = os.system('which rucio > /dev/null 2>&1')
     if st != 0:
         print('You need to "setupATLAS ; lsetup rucio" first ...')
         sys.exit(1)
