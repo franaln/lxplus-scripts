@@ -289,17 +289,17 @@ with open(jobs_file) as f:
 
 
 
-    # Use pbook to kill or retry (not working now  :/)
-    # if args.retry or args.kill:
-    #     cmd = 'pbook -c "sync()"'
-    #     os.system(cmd)
+    # Use pbook to kill or retry (not need to sync now, it seems now is working but ...)
+    if args.retry or args.kill:
 
-    if args.retry:
-        for j in jobs:
-            cmd = 'pbook -c "retry(%i)"' % j['jeditaskid']
-            os.system(cmd)
+        if args.retry:
+            pbook_cmd = 'retry' 
+        elif args.kill:
+            pbook_cmd = 'kill'
 
-    if args.kill:
-        for j in jobs:
-            cmd = 'pbook -c "kill(%i)"' % j['jeditaskid']
-            os.system(cmd)
+        job_id_list = ','.join(['%s' % j['jeditaskid'] for j in jobs])
+
+        py_cmd = 'for j in [%s]: %s(j)' % (job_id_list, pbook_cmd)
+        
+        cmd = 'pbook -c "%s"' % py_cmd
+        os.system(cmd)

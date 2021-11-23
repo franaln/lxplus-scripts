@@ -153,10 +153,14 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-
     input_file = args.filepath
     log_file = input_file + '.log'
 
+
+    st = os.system('which rucio > > /dev/null 2>&1')
+    if st != 0:
+        print('You need to "setupATLAS ; lsetup rucio" first ...')
+        sys.exit(1)
 
     if not args.check:
         os.system('voms-proxy-init -voms atlas')
