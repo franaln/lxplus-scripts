@@ -55,14 +55,16 @@ parser.add_argument('--list',  dest='show_list', action='store_true', help='Show
 
 # Others
 parser.add_argument('--links', dest='show_links', action='store_true', help='Show bigpanda links')
+parser.add_argument('--ib',  dest='ignore_broken', action='store_true', help='Don\'t show broken jobs')
 parser.add_argument('--mask',  dest='mask', action='store_true', help='Mask selected jobs to not show anymore (useful for broken jobs)')
+
 
 args = parser.parse_args()
 
 
 
 cookie_file = os.path.expanduser('~/.bigpanda.cookie.txt')
-jobs_file = os.path.expanduser('~/.jobs.json') if args.jobs_file is None else args.jobs_file
+jobs_file   = os.path.expanduser('~/.jobs.json') if args.jobs_file is None else args.jobs_file
 jobs_masked_file = os.path.expanduser('~/.jobs_masked.txt')
 
 
@@ -239,6 +241,10 @@ with open(jobs_file) as f:
 
     # Filter masked jobs
     jobs = [ j for j in jobs if j['jeditaskid'] not in masked_jobs ]
+
+    # Filter broken jobs if requested
+    if args.ignore_broken:
+        jobs = [ j for j in jobs if j['status'] == 'broken' ]
 
     # Filter task name
     if args.taskname is not None:

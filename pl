@@ -8,7 +8,11 @@ import argparse
 import datetime
 
 # your www path (change it to your own www path!)
-www_path = os.path.expanduser('~/work/www')
+www_path = os.environ['USER_WWW_PATH']
+
+if not www_path:
+    print('Set USER_WWW_PATH env variable to your www path')
+    sys.exit(1)
 
 # public directory
 public_dir = os.path.join(www_path, 'public')
