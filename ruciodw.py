@@ -4,6 +4,7 @@
 # download, using rucio, all the samples from the input txt file
 
 import os
+import re
 import sys
 import argparse
 
@@ -43,38 +44,33 @@ def check(input_file, log_file, ext):
 
     samples = get_download_samples(input_file, ext)
 
-    s = open(log_file).read()
-
-    lines = s.split('\n')
-
     sample_info = dict()
-
     max_sample_lenght = 0
-    for index, line in enumerate(lines):
 
-        if not line.startswith('----------------------------------------'):
-            continue
+    log_file_str = open(log_file).read()
 
-        try:
-            name = lines[index+1][4:]
+    regex = r"-*\nDownload summary\n-*\nDID (.*)\nTotal files \(DID\):\s*(\d*)\nTotal files \(filtered\):\s*(\d*)\nDownloaded files:\s*(\d*)\nFiles already found locally:\s*(\d*)\nFiles that cannot be downloaded:\s*(\d*)"
 
-            if ':' in name:
-                _, name = name.split(':')
+    matches = re.finditer(regex, log_file_str, re.MULTILINE)
 
-            sample_info[name] = {
-                'name':       name,
-                'total':      int(lines[index+2].split(':')[1].strip()), # total
-                'downloaded': int(lines[index+3].split(':')[1].strip()), # downloaded
-                'local':      int(lines[index+4].split(':')[1].strip()), # local
-                'error':      int(lines[index+5].split(':')[1].strip()), # error
-                }
-        except:
-            print('Error: %s' % line)
+    for match_num, match in enumerate(matches, start=1):
+
+        name = match.group(1)
+
+        if ':' in name:
+            _, name = name.split(':')
 
         if len(name) > max_sample_lenght:
             max_sample_lenght = len(name)
 
-
+        sample_info[name] = {
+            'name': name,
+            'total':      int(match.group(2)),
+            'downloaded': int(match.group(4)),
+            'local':      int(match.group(5)),
+            'error':      int(match.group(6)),
+        }
+        
     errors = []
     empty  = []
 
@@ -85,21 +81,13 @@ def check(input_file, log_file, ext):
         'error': 0,
         }
 
-    print ''
-    print 'rucio summary:'
-    print '--------------'
+    print('\nrucio summary:\n--------------')
     for name in samples:
 
         if name in sample_info:
             d = sample_info[name]
         else:
-            d = {
-                'name': name,
-                'total': 0,
-                'downloaded': 0, 
-                'local': 0,
-                'error': 1,
-            }
+            d = { 'name': name, 'total': 0, 'downloaded': 0, 'local': 0, 'error': 1,}
 
         if d['error'] > 0 or d['local'] + d['downloaded'] < d['total']:
             errors.append(d)
@@ -141,7 +129,7 @@ def check(input_file, log_file, ext):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='ruciodw')
+    parser = argparse.ArgumentParser(description='ruciodw.py')
 
     parser.add_argument('filepath', nargs='?')
     parser.add_argument('--ext', default='', help='Extension')
