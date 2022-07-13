@@ -27,36 +27,36 @@ def get_downloaded_samples(input_file, ext=''):
 
 
 
-if __name__ == '__main__':
+# main
+parser = argparse.ArgumentParser(description='rucio_merge.py')
 
-    parser = argparse.ArgumentParser(description='rucio_merge.py')
+parser.add_argument('filepath', nargs='?')
+parser.add_argument('-f', dest='force', action='store_true', help='Use hadd -f')
+parser.add_argument('-d', dest='dry', action='store_true', help='Dry run: only show commands')
+parser.add_argument('-k', dest='keep_user', action='store_true', help='Keep "user.USERNAME" in output name')
 
-    parser.add_argument('filepath', nargs='?')
-    parser.add_argument('-f', dest='force', action='store_true', help='Use hadd -f')
-    parser.add_argument('-d', dest='dry', action='store_true', help='Dry run: only show commands')
+if len(sys.argv) < 2:
+    parser.print_usage()
+    sys.exit(1)
 
-    if len(sys.argv) < 2:
-        parser.print_usage()
-        sys.exit(1)
+args = parser.parse_args()
 
-    args = parser.parse_args()
+samples = get_downloaded_samples(args.filepath)
 
-    samples = get_downloaded_samples(args.filepath)
+for sam in samples:
 
-    for sam in samples:
+    output_name = sam + '.root'
 
-        output_name = sam
+    if sam.startswith('user.') and not args.keep_user:
+        user = sam.split('.')[1]
+        output_name = output_name.replace('user.%s.' % user, '')
 
-        if sam.startswith('user.'):
-            user = sam.split('.')[1]
-            output_name = output_name.replace('user.%s.' % user, '')
+    hadd_cmd = 'hadd -f' if args.force else 'hadd'
 
-        hadd_cmd = 'hadd -f' if args.force else 'hadd'
+    cmd = '%s %s %s/*root*' % (hadd_cmd, output_name, sam)
 
-        cmd = '%s %s %s/*root*' % (hadd_cmd, output_name, sam)
-
-        print cmd
-        if not args.dry:
-            os.system(cmd)
+    print cmd
+    if not args.dry:
+        os.system(cmd)
 
 

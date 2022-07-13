@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
-# ruciodw.py
-# download, using rucio, all the samples from the input txt file
+# rucio_dw.py
+# download, using rucio, all the samples from the input txt file and print summary
 
 import os
 import re
@@ -141,39 +141,38 @@ def check(input_file, log_file, ext):
 
 
 
-if __name__ == '__main__':
+# main
+parser = argparse.ArgumentParser(description='rucio_dw.py')
 
-    parser = argparse.ArgumentParser(description='ruciodw.py')
+parser.add_argument('filepath', nargs='?')
+parser.add_argument('--ext', default='', help='add extension')
+parser.add_argument('--check', action='store_true', help='Only check logfile')
 
-    parser.add_argument('filepath', nargs='?')
-    parser.add_argument('--ext', default='', help='Extension')
-    parser.add_argument('--check', action='store_true')
+if len(sys.argv) < 2:
+    parser.print_usage()
+    sys.exit(1)
 
-    if len(sys.argv) < 2:
-        parser.print_usage()
-        sys.exit(1)
+args = parser.parse_args()
 
-    args = parser.parse_args()
-
-    input_file = args.filepath
-    log_file = input_file + '.log'
+input_file = args.filepath
+log_file = input_file + '.log'
 
 
-    st = os.system('which rucio > /dev/null 2>&1')
-    if st != 0:
-        print('You need to "setupATLAS ; lsetup rucio" first ...')
-        sys.exit(1)
+st = os.system('which rucio > /dev/null 2>&1')
+if st != 0:
+    print('You need to "setupATLAS ; lsetup rucio" first ...')
+    sys.exit(1)
 
-    if not args.check:
-        os.system('voms-proxy-init -voms atlas')
+if not args.check:
+    os.system('voms-proxy-init -voms atlas')
 
-        try:
-            download(input_file, log_file, args.ext)
-        except KeyboardInterrupt:
-            raise
+    try:
+        download(input_file, log_file, args.ext)
+    except KeyboardInterrupt:
+        raise
 
-    if os.path.isfile(log_file):
-        check(input_file, log_file, args.ext)
+if os.path.isfile(log_file):
+    check(input_file, log_file, args.ext)
 
 
 
