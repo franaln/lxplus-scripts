@@ -8,10 +8,16 @@ import re
 import sys
 import argparse
 
+def print_ok(msg):
+    print('\033[0;32m%s\033[0m' % msg)
+
+def print_error(msg):
+    print('\033[0;31m%s\033[0m' % msg)
+
+
 def get_download_samples(input_file, ext=''):
 
     samples = []
-
     for line in open(input_file).read().split('\n'):
 
         if not line or line.startswith('#'):
@@ -89,15 +95,21 @@ def check(input_file, log_file, ext):
         else:
             d = { 'name': name, 'total': 0, 'downloaded': 0, 'local': 0, 'error': 1,}
 
+        error = False
         if d['error'] > 0 or d['local'] + d['downloaded'] < d['total']:
             errors.append(d)
+            error = True
 
         if d['total'] == 0:
             empty.append(d)
+            error = True
 
         ss = '{name: <%s}: total={total:<3}, downloaded={downloaded: <3}, local={local: <3}, error={error: <3}' % max_sample_lenght
 
-        print(ss.format(**d))
+        if error:
+            print_error(ss.format(**d))
+        else:
+            print_ok(ss.format(**d))
 
         s['total']      += d['total']
         s['downloaded'] += d['downloaded']
@@ -106,23 +118,25 @@ def check(input_file, log_file, ext):
 
 
     print('> Summary:')
-    ss = 'Total = {total:<3}, Downloaded = {downloaded: <3}, Local = {local: <3}, Error = {error: <3}'
-    print(ss.format(**s))
-
+    ss = 'Total = {total:<3}, Downloaded = {downloaded: <3}, Local = {local: <3}, Error = {error: <3}'    
+    if len(errors) > 0:
+        print_error(ss.format(**s))
+    else:
+        print(ss.format(**s))
 
     if errors:
         print('> The following samples have some errors:')
         for e in errors:
-            print('\033[0;31m%s\033[0m' % e['name'])
+            print_error(e['name'])
     else:
-        print('\033[0;32m> No errors\033[0m')
+        print_ok('> No errors')
 
     if empty:
         print('> The following samples are empty:')
         for e in empty:
-            print('\033[0;31m%s\033[0m' % e['name'])
+            print_error(e['name'])
     else:
-        print('\033[0;32m> No empty samples\033[0m')
+        print_ok('> No empty samples')
 
 
 
