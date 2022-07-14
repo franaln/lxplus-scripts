@@ -26,7 +26,6 @@ def get_downloaded_samples(input_file, ext=''):
     return samples
 
 
-
 # main
 parser = argparse.ArgumentParser(description='rucio_merge.py')
 
@@ -61,7 +60,7 @@ for sam in samples:
 
     cmd = '%s %s %s/*root*' % (hadd_cmd, output_name, sam)
 
-    print cmd
+    print(cmd)
     if not args.dry:
         os.system(cmd)
 
