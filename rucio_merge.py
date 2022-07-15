@@ -29,7 +29,7 @@ def get_downloaded_samples(input_file, ext=''):
 # main
 parser = argparse.ArgumentParser(description='rucio_merge.py')
 
-parser.add_argument('filepath', nargs='?')
+parser.add_argument('filepath', nargs='+')
 parser.add_argument('-f', dest='force', action='store_true', help='Use hadd -f')
 parser.add_argument('-d', dest='dry', action='store_true', help='Dry run: only show commands')
 parser.add_argument('-k', dest='keep_user', action='store_true', help='Keep "user.USERNAME" in output name')
@@ -41,7 +41,14 @@ if len(sys.argv) < 2:
 
 args = parser.parse_args()
 
-samples = get_downloaded_samples(args.filepath)
+# txt input file with a list of samples
+if len(args.filepath) == 1 and args.filepath[0].endswith('.txt'):
+    samples = get_downloaded_samples(args.filepath)
+
+# one or more download samples (can be used with bash * expansions)
+else:
+    samples = args.filepath
+
 
 for sam in samples:
 
