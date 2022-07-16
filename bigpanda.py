@@ -1,5 +1,7 @@
 #! /usr/bin/env python
 
+# not using f-strings yet as this need to be run sometimes with python<3.6 in lxplus
+
 import os
 import sys
 import json
@@ -56,7 +58,6 @@ parser.add_argument('--list',  dest='show_list', action='store_true', help='Show
 # Others
 parser.add_argument('--links', dest='show_links', action='store_true', help='Show bigpanda links')
 parser.add_argument('--ib',  dest='ignore_broken', action='store_true', help='Don\'t show broken jobs')
-parser.add_argument('--mask',  dest='mask', action='store_true', help='Mask selected jobs to not show anymore (useful for broken jobs)')
 
 
 args = parser.parse_args()
@@ -81,6 +82,7 @@ else:
 
 
 if need_download:
+
     in_lxplus = ('HOSTNAME' in os.environ and '.cern.ch' in os.environ['HOSTNAME'])
 
     # Download cookie
@@ -154,17 +156,18 @@ def print_job(j, show_link=False):
     nfiles_failed = dsinfo['nfilesfailed']
     nfiles_finished = dsinfo['nfilesfinished']
 
+    job_text = '{0: <10} {1: <110} {2: <12} {3: >5}/{4: >5}'.format(j['jeditaskid'], j['taskname'], j['status'], nfiles_finished, nfiles)
+
     if show_link:
-        job_text = 'https://bigpanda.cern.ch/task/{0: <10} {1: <110} {2: <12} {3: >5}/{4: >5}'.format(j['jeditaskid'], j['taskname'], j['status'], nfiles_finished, nfiles)
-    else:
-        job_text = '{0: <10} {1: <110} {2: <12} {3: >5}/{4: >5}'.format(j['jeditaskid'], j['taskname'], j['status'], nfiles_finished, nfiles)
+        job_text = 'https://bigpanda.cern.ch/task/%s' % job_text
 
     if int(nfiles_failed) > 0:
         job_text += ' (failed: {0: >5})'.format(nfiles_failed)
 
-
     if j['status'] == 'done':
         print('\033[0;32m%s\033[0m' % job_text)
+    elif int(nfiles_failed) > 0 and j['status'] == 'running':
+        print('\033[0;33m%s\033[0m' % job_text)
     elif int(nfiles_failed) > 0:
         print('\033[0;31m%s\033[0m' % job_text)
     else:
@@ -182,19 +185,12 @@ def print_full_stats(jobs):
     jobs_finished = 0
     jobs_broken   = 0
     jobs_failed   = 0
+
+    njobs = { 'done': 0, 'running': 0, 'finished':0, 'broken': 0, 'failed': 0 }
+
     for j in jobs:
 
-        status = j['status']
-        if status == 'done':
-            jobs_done += 1
-        elif status == 'running':
-            jobs_running += 1
-        elif status == 'finished':
-            jobs_finished += 1
-        elif status == 'broken':
-            jobs_broken += 1
-        elif status == 'failed':
-            jobs_failed += 1
+        njobs[j['status']] += 1
 
         dsinfo = j['dsinfo']
 
@@ -205,20 +201,28 @@ def print_full_stats(jobs):
     if int(total_nfiles) == 0:
         return
 
-    perc_finished = 100*total_nfiles_finished/float(total_nfiles)
-    perc_failed   = 100*total_nfiles_failed/float(total_nfiles)
+    perc_finished = 100 * total_nfiles_finished / float(total_nfiles)
+    perc_failed   = 100 * total_nfiles_failed   / float(total_nfiles)
 
-    text = 'Stats  >   %i Jobs | %i running | %i broken | %i failed | %i finished | %i done || Files: %.2f%% failed | %.2f%% finished' % (len(jobs), jobs_running, jobs_broken, jobs_failed, jobs_finished, jobs_done, perc_failed, perc_finished)
-    status = 'done' if (total_nfiles == total_nfiles_finished and total_nfiles_failed == 0) else 'running'
+    text = 'Stats  >   %i Jobs | %i running | %i broken | %i failed | %i finished | %i done || Files: %.1f%% failed | %.1f%% finished' % (len(jobs), njobs['running'], njobs['broken'], njobs['failed'], njobs['finished'], njobs['done'], perc_failed, perc_finished)
 
-    job_text = '{0: <121} {1: <12} {2: >5}/{3: >5}'.format(text, status, total_nfiles_finished, total_nfiles)
+    if (total_nfiles == total_nfiles_finished and total_nfiles_failed == 0):
+        overall_status = 'done'
+    elif total_nfiles == total_nfiles_finished + total_nfiles_failed:
+        overall_status = 'failed'
+    else:
+        overall_status = 'running'
+
+    job_text = '{0: <121} {1: <12} {2: >5}/{3: >5}'.format(text, overall_status, total_nfiles_finished, total_nfiles)
 
     if int(total_nfiles_failed) > 0:
         job_text += ' (failed: {0: >5})'.format(total_nfiles_failed)
 
     print('-'*163)
-    if status == 'done':
+    if overall_status == 'done':
         print('\033[0;32m%s\033[0m' % job_text)
+    elif int(total_nfiles_failed) > 0 and overall_status == 'running':
+        print('\033[0;33m%s\033[0m' % job_text)
     elif int(total_nfiles_failed) > 0:
         print('\033[0;31m%s\033[0m' % job_text)
     else:
@@ -226,21 +230,9 @@ def print_full_stats(jobs):
 
 
 # Print jobs
-masked_jobs = []
-if os.path.isfile(jobs_masked_file):
-    with open(jobs_masked_file) as f:
-        lines  = f.read().split('\n')
-        for line in lines:
-            if line:
-                masked_jobs.append(int(line))
-
-
 with open(jobs_file) as f:
 
     jobs = json.load(f)
-
-    # Filter masked jobs
-    jobs = [ j for j in jobs if j['jeditaskid'] not in masked_jobs ]
 
     # Filter broken jobs if requested
     if args.ignore_broken:
@@ -258,16 +250,10 @@ with open(jobs_file) as f:
     if args.taskid is not None:
         jobs = [ j for j in jobs if args.taskid == str(j['jeditaskid']) ]
 
-    # Show jobs
+    # Sort jobs
     jobs = sorted(jobs, key=lambda t: t[args.sort])
 
-    if args.mask and jobs:
-        print('Masking the following files:')
-        
-        with open(jobs_masked_file, 'a+') as f:
-            for j in jobs:
-                f.write('%i\n' % j['jeditaskid'])
-
+    # Show jobs
     if args.show_list:
         print('[%s]' % ', '.join(['%s' % j['jeditaskid'] for j in jobs]))
     else:
@@ -291,8 +277,6 @@ with open(jobs_file) as f:
 
         if args.show_full_stats:
             print_full_stats(jobs)
-
-
 
 
     # Use pbook to kill or retry (not need to sync now, it seems now is working but ...)
