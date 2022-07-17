@@ -43,7 +43,7 @@ args = parser.parse_args()
 
 # txt input file with a list of samples
 if len(args.filepath) == 1 and args.filepath[0].endswith('.txt'):
-    samples = get_downloaded_samples(args.filepath)
+    samples = get_downloaded_samples(args.filepath[0])
 
 # one or more download samples (can be used with bash * expansions)
 else:
