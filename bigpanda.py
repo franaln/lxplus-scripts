@@ -120,7 +120,7 @@ def filter_jobs(jobs, key, exp):
                 if s.startswith('~'):
                     fcond.append(s[1:].strip() not in j[key])
                 else:
-                    fcond.append(s[1:].strip() in j[key])
+                    fcond.append(s.strip() in j[key])
 
             if all(fcond):
                 fjobs.append(j)
@@ -133,7 +133,7 @@ def filter_jobs(jobs, key, exp):
                 if s.startswith('~'):
                     fcond.append(s[1:].strip() not in j[key])
                 else:
-                    fcond.append(s[1:].strip() in j[key])
+                    fcond.append(s.strip() in j[key])
 
             if any(fcond):
                 fjobs.append(j)
@@ -146,7 +146,7 @@ def filter_jobs(jobs, key, exp):
         fjobs = [ j for j in jobs if exp in j[key] ]
 
     return fjobs
-    
+
 
 def print_job(j, show_link=False):
 
@@ -283,13 +283,13 @@ with open(jobs_file) as f:
     if args.retry or args.kill:
 
         if args.retry:
-            pbook_cmd = 'retry' 
+            pbook_cmd = 'retry'
         elif args.kill:
             pbook_cmd = 'kill'
 
         job_id_list = ','.join(['%s' % j['jeditaskid'] for j in jobs])
 
         py_cmd = 'for j in [%s]: %s(j)' % (job_id_list, pbook_cmd)
-        
+
         cmd = 'pbook -c "%s"' % py_cmd
         os.system(cmd)
