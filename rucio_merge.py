@@ -20,7 +20,7 @@ def get_downloaded_samples(input_file, ext=''):
             line = line[:-1]
 
         sample = '%s%s' % (line, ext)
-        
+
         samples.append(sample)
 
     return samples
@@ -30,6 +30,7 @@ def get_downloaded_samples(input_file, ext=''):
 parser = argparse.ArgumentParser(description='rucio_merge.py')
 
 parser.add_argument('filepath', nargs='+')
+parser.add_argument('--ext', default='', help='Add extension to names in txt file')
 parser.add_argument('-f', dest='force', action='store_true', help='Use hadd -f')
 parser.add_argument('-d', dest='dry', action='store_true', help='Dry run: only show commands')
 parser.add_argument('-k', dest='keep_user', action='store_true', help='Keep "user.USERNAME" in output name')
@@ -43,7 +44,7 @@ args = parser.parse_args()
 
 # txt input file with a list of samples
 if len(args.filepath) == 1 and args.filepath[0].endswith('.txt'):
-    samples = get_downloaded_samples(args.filepath[0])
+    samples = get_downloaded_samples(args.filepath[0], args.ext)
 
 # one or more download samples (can be used with bash * expansions)
 else:
@@ -70,5 +71,3 @@ for sam in samples:
     print(cmd)
     if not args.dry:
         os.system(cmd)
-
-
