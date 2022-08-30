@@ -53,6 +53,9 @@ else:
 
 for sam in samples:
 
+    if sam.endswith('/'):
+        sam = sam[:-1]
+
     output_name = sam
 
     if output_name.startswith('user.') and not args.keep_user:
