@@ -230,66 +230,76 @@ def print_full_stats(jobs):
 
 
 # Print jobs
-with open(jobs_file) as f:
 
-    jobs = json.load(f)
+jobs = json.load(open(jobs_file))
 
-    # Filter broken jobs if requested
-    if args.ignore_broken:
-        jobs = [ j for j in jobs if j['status'] == 'broken' ]
+# Filter broken jobs if requested
+if args.ignore_broken:
+    jobs = [ j for j in jobs if j['status'] == 'broken' ]
 
-    # Filter task name
-    if args.taskname is not None:
-        jobs = filter_jobs(jobs, 'taskname', args.taskname)
+# Filter task name
+if args.taskname is not None:
+    jobs = filter_jobs(jobs, 'taskname', args.taskname)
 
-    # Filter status
-    if args.status is not None:
-        jobs = filter_jobs(jobs, 'status', args.status)
+# Filter status
+if args.status is not None:
+    jobs = filter_jobs(jobs, 'status', args.status)
 
-    # Filter taksID
-    if args.taskid is not None:
+# Filter taksID
+if args.taskid is not None:
         jobs = [ j for j in jobs if args.taskid == str(j['jeditaskid']) ]
 
-    # Sort jobs
-    jobs = sorted(jobs, key=lambda t: t[args.sort])
+# Sort jobs
+jobs = sorted(jobs, key=lambda t: t[args.sort])
 
-    # Show jobs
-    if args.show_list:
-        print('[%s]' % ', '.join(['%s' % j['jeditaskid'] for j in jobs]))
-    else:
-        for j in jobs:
-            if args.show_all:
-                print(j)
-            elif args.download_list:
-                task_name = j['taskname']
-                if args.output_extension:
-                    if task_name.endswith('/'):
-                        task_name = task_name[:-1]
-                    task_name = task_name + args.output_extension
+# Show jobs
+if args.show_list:
+    print('[%s]' % ', '.join(['%s' % j['jeditaskid'] for j in jobs]))
+else:
+    for j in jobs:
+        if args.show_all:
+            print(j)
+        elif args.download_list:
+            task_name = j['taskname']
+            if args.output_extension:
+                if task_name.endswith('/'):
+                    task_name = task_name[:-1]
+                task_name = task_name + args.output_extension
 
-                if j['status'] == 'done':
-                    print(task_name)
-                else:
-                    print('# (%s) %s' % (j['status'], task_name))
-
+            if j['status'] == 'done':
+                print(task_name)
             else:
-                print_job(j, args.show_links)
+                print('# (%s) %s' % (j['status'], task_name))
 
-        if args.show_full_stats:
-            print_full_stats(jobs)
+        else:
+            print_job(j, args.show_links)
+
+    if args.show_full_stats:
+        print_full_stats(jobs)
 
 
-    # Use pbook to kill or retry (not need to sync now, it seems now is working but ...)
-    if args.retry or args.kill:
+# Use pbook to kill or retry (not need to sync now, it seems now is working but ...)
+if args.retry or args.kill:
+
+    if not jobs:
+        if args.kill:
+            print('No job selected, exiting ...')
+            sys.exit(1)
 
         if args.retry:
-            pbook_cmd = 'retry'
-        elif args.kill:
-            pbook_cmd = 'kill'
+            print('No job selected, retrying jobs in status = "finished"')
+            jobs = json.load(open(jobs_file))
+            jobs = filter_jobs(jobs, 'status', 'finished')
 
-        job_id_list = ','.join(['%s' % j['jeditaskid'] for j in jobs])
+    if args.retry:
+        pbook_cmd = 'retry'
+    elif args.kill:
+        pbook_cmd = 'kill'
 
-        py_cmd = 'for j in [%s]: %s(j)' % (job_id_list, pbook_cmd)
+    job_id_list = ','.join(['%s' % j['jeditaskid'] for j in jobs])
 
-        cmd = 'pbook -c "%s"' % py_cmd
-        os.system(cmd)
+
+    py_cmd = 'for j in [%s]: %s(j)' % (job_id_list, pbook_cmd)
+
+    cmd = 'pbook -c "%s"' % py_cmd
+    os.system(cmd)
