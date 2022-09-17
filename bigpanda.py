@@ -156,7 +156,11 @@ def print_job(j, show_link=False):
     nfiles_failed = dsinfo['nfilesfailed']
     nfiles_finished = dsinfo['nfilesfinished']
 
-    job_text = '{0: <10} {1: <110} {2: <12} {3: >5}/{4: >5}'.format(j['jeditaskid'], j['taskname'], j['status'], nfiles_finished, nfiles)
+    jname = j['taskname']
+    if jname.endswith('/'):
+        jname = jname[:-1]
+
+    job_text = '{0: <10} {1: <110} {2: <12} {3: >5}/{4: >5}'.format(j['jeditaskid'], jname, j['status'], nfiles_finished, nfiles)
 
     if show_link:
         job_text = 'https://bigpanda.cern.ch/task/%s' % job_text
@@ -186,11 +190,14 @@ def print_full_stats(jobs):
     jobs_broken   = 0
     jobs_failed   = 0
 
-    njobs = { 'done': 0, 'running': 0, 'finished':0, 'broken': 0, 'failed': 0 }
+    njobs = { 'done': 0, 'running': 0, 'finished':0, 'broken': 0, 'failed': 0, 'other': 0 }
 
     for j in jobs:
 
-        njobs[j['status']] += 1
+        if j['status'] in njobs:
+            njobs[j['status']] += 1
+        else:
+            njobs['other'] += 1
 
         dsinfo = j['dsinfo']
 
@@ -261,9 +268,9 @@ else:
             print(j)
         elif args.download_list:
             task_name = j['taskname']
+            if task_name.endswith('/'):
+                task_name = task_name[:-1]
             if args.output_extension:
-                if task_name.endswith('/'):
-                    task_name = task_name[:-1]
                 task_name = task_name + args.output_extension
 
             if j['status'] == 'done':
@@ -297,7 +304,6 @@ if args.retry or args.kill:
         pbook_cmd = 'kill'
 
     job_id_list = ','.join(['%s' % j['jeditaskid'] for j in jobs])
-
 
     py_cmd = 'for j in [%s]: %s(j)' % (job_id_list, pbook_cmd)
 
