@@ -63,11 +63,18 @@ parser.add_argument('--ib',  dest='ignore_broken', action='store_true', help='Do
 args = parser.parse_args()
 
 
+# ----
+# Config
+cookie_file = os.path.expanduser('~/.bigpanda_cookie.txt')
+jobs_file   = os.path.expanduser('~/.bigpanda_jobs.json') if args.jobs_file is None else args.jobs_file
 
-cookie_file = os.path.expanduser('~/.bigpanda.cookie.txt')
-jobs_file   = os.path.expanduser('~/.jobs.json') if args.jobs_file is None else args.jobs_file
-jobs_masked_file = os.path.expanduser('~/.jobs_masked.txt')
+status_running = [
+    'running',
+    'pending',
+]
 
+redownload_time_sec = 900 # 15m
+# ----
 
 # Dowload jobs
 need_download = False
@@ -77,7 +84,7 @@ elif args.use_existing_db:
     need_download = False
 else:
     jobs_file_old = (datetime.now() - datetime.fromtimestamp(os.path.getmtime(jobs_file))).total_seconds()
-    if jobs_file_old > 900:
+    if jobs_file_old > redownload_time_sec:
         need_download = True
 
 
@@ -170,7 +177,7 @@ def print_job(j, show_link=False):
 
     if j['status'] == 'done':
         print('\033[0;32m%s\033[0m' % job_text)
-    elif int(nfiles_failed) > 0 and j['status'] == 'running':
+    elif int(nfiles_failed) > 0 and j['status'] in status_running:
         print('\033[0;33m%s\033[0m' % job_text)
     elif int(nfiles_failed) > 0:
         print('\033[0;31m%s\033[0m' % job_text)
@@ -194,7 +201,9 @@ def print_full_stats(jobs):
 
     for j in jobs:
 
-        if j['status'] in njobs:
+        if j['status'] in status_running:
+            njobs['running'] += 1
+        elif j['status'] in njobs:
             njobs[j['status']] += 1
         else:
             njobs['other'] += 1
