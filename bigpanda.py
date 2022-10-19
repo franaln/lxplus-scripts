@@ -101,7 +101,7 @@ if need_download:
     # Download jobs data
     filter_str = 'user.%s*' % args.username if args.download_filter is None else args.download_filter
     if in_lxplus:
-        cmd2 = 'curl --progress-bar -b {COOKIE_FILE} -H \'Accept: application/json\' -H \'Content-Type: application/json\' "https://bigpanda.cern.ch/tasks/?taskname={TASK}&days={DAYS}&json"'.format(COOKIE_FILE=cookie_file, TASK=filter_str, DAYS=args.days_filter)
+        cmd2 = 'curl -b {COOKIE_FILE} -H \'Accept: application/json\' -H \'Content-Type: application/json\' "https://bigpanda.cern.ch/tasks/?taskname={TASK}&days={DAYS}&json"'.format(COOKIE_FILE=cookie_file, TASK=filter_str, DAYS=args.days_filter)
     else:
         cmd2 = 'ssh {USER}@lxplus.cern.ch "curl -b {COOKIE_FILE} -H \'Accept: application/json\' -H \'Content-Type: application/json\' "https://bigpanda.cern.ch/tasks/?taskname={TASK}&days={DAYS}\&json""'.format(USER=args.username, COOKIE_FILE=cookie_file, TASK=filter_str, DAYS=args.days_filter)
 
@@ -245,8 +245,19 @@ def print_full_stats(jobs):
         print(job_text)
 
 
-# Print jobs
+def run_pbook(cmd, jobs):
 
+    job_id_list = ','.join(['%s' % j['jeditaskid'] for j in jobs])
+
+    py_cmd = 'for j in [%s]: %s(j)' % (job_id_list, cmd)
+
+    cmd = 'pbook -c "%s"' % py_cmd
+    os.system(cmd)
+
+
+
+
+# Filter and sort jobs
 jobs = json.load(open(jobs_file))
 
 # Filter broken jobs if requested
@@ -263,14 +274,45 @@ if args.status is not None:
 
 # Filter taksID
 if args.taskid is not None:
-        jobs = [ j for j in jobs if args.taskid == str(j['jeditaskid']) ]
+    jobs = [ j for j in jobs if args.taskid == str(j['jeditaskid']) ]
+
 
 # Sort jobs
 jobs = sorted(jobs, key=lambda t: t[args.sort])
 
+
+
+# Use pbook to kill or retry (not need to sync now, it seems now is working but ...)
+if args.retry or args.kill:
+
+    if not jobs:
+        print('No job selected, exiting ...')
+        sys.exit(1)
+
+    if args.retry:
+        print('Filtering jobs with status "finished" or "failed" to retry')
+        jobs = filter_jobs(jobs, 'status', 'finished|failed')
+
+        if not jobs:
+            print('No job to retry, exiting ...')
+            sys.exit(1)
+
+
+    for j in jobs:
+        print_job(j)
+
+    if args.retry:
+        pbook_cmd = 'retry'
+    elif args.kill:
+        pbook_cmd = 'kill'
+
+    run_pbook(pbook_cmd, jobs)
+
+
 # Show jobs
-if args.show_list:
+elif args.show_list:
     print('[%s]' % ', '.join(['%s' % j['jeditaskid'] for j in jobs]))
+
 else:
     for j in jobs:
         if args.show_all:
@@ -292,27 +334,3 @@ else:
 
     if args.show_full_stats:
         print_full_stats(jobs)
-
-
-# Use pbook to kill or retry (not need to sync now, it seems now is working but ...)
-if args.retry or args.kill:
-
-    if not jobs:
-        print('No job selected, exiting ...')
-        sys.exit(1)
-
-    if args.retry:
-        print('Filtering jobs with status "finished" or "failed" to retry')
-        jobs = filter_jobs(jobs, 'status', 'finished|failed')
-
-    if args.retry:
-        pbook_cmd = 'retry'
-    elif args.kill:
-        pbook_cmd = 'kill'
-
-    job_id_list = ','.join(['%s' % j['jeditaskid'] for j in jobs])
-
-    py_cmd = 'for j in [%s]: %s(j)' % (job_id_list, pbook_cmd)
-
-    cmd = 'pbook -c "%s"' % py_cmd
-    os.system(cmd)
