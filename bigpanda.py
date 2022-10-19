@@ -119,12 +119,12 @@ if need_download:
 def filter_jobs(jobs, key, exp):
 
     fjobs = []
-    if '&&' in exp:
-        filter_exp = exp.split('&&')
+    if '&' in exp:
+        filter_exp = exp.split('&&') if '&&' in exp else exp.split('&')
         for j in jobs:
             fcond = []
             for s in filter_exp:
-                if s.startswith('~'):
+                if s.startswith('~') or s.startswith('!'):
                     fcond.append(s[1:].strip() not in j[key])
                 else:
                     fcond.append(s.strip() in j[key])
@@ -132,12 +132,12 @@ def filter_jobs(jobs, key, exp):
             if all(fcond):
                 fjobs.append(j)
 
-    elif  '||' in exp:
-        filter_exp = exp.split('||')
+    elif '|' in exp:
+        filter_exp = exp.split('||') if '||' in exp else exp.split('|')
         for j in jobs:
             fcond = []
             for s in filter_exp:
-                if s.startswith('~'):
+                if s.startswith('~') or s.startswith('!'):
                     fcond.append(s[1:].strip() not in j[key])
                 else:
                     fcond.append(s.strip() in j[key])
@@ -298,14 +298,12 @@ else:
 if args.retry or args.kill:
 
     if not jobs:
-        if args.kill:
-            print('No job selected, exiting ...')
-            sys.exit(1)
+        print('No job selected, exiting ...')
+        sys.exit(1)
 
-        if args.retry:
-            print('No job selected, retrying jobs in status = "finished"')
-            jobs = json.load(open(jobs_file))
-            jobs = filter_jobs(jobs, 'status', 'finished')
+    if args.retry:
+        print('Filtering jobs with status "finished" or "failed" to retry')
+        jobs = filter_jobs(jobs, 'status', 'finished|failed')
 
     if args.retry:
         pbook_cmd = 'retry'
