@@ -73,6 +73,11 @@ status_running = [
     'pending',
 ]
 
+status_retry = [
+    'finished',
+    'failed',
+]
+
 redownload_time_sec = 900 # 15m
 # ----
 
@@ -105,6 +110,9 @@ if need_download:
     else:
         cmd2 = 'ssh {USER}@lxplus.cern.ch "curl -b {COOKIE_FILE} -H \'Accept: application/json\' -H \'Content-Type: application/json\' "https://bigpanda.cern.ch/tasks/?taskname={TASK}&days={DAYS}\&json""'.format(USER=args.username, COOKIE_FILE=cookie_file, TASK=filter_str, DAYS=args.days_filter)
 
+    if not args.download_list:
+        print('> Downloading jobs from bigpanda...')
+
     output = subprocess.check_output(cmd2, shell=True)
 
     if not isinstance(output, str):
@@ -112,6 +120,10 @@ if need_download:
 
     with open(jobs_file, 'w') as f:
         f.write(output)
+
+else:
+    if not args.download_list:
+        print('> Using existing jobs db...')
 
 
 
@@ -290,8 +302,8 @@ if args.retry or args.kill:
         sys.exit(1)
 
     if args.retry:
-        print('Filtering jobs with status "finished" or "failed" to retry')
-        jobs = filter_jobs(jobs, 'status', 'finished|failed')
+        print('Filtering jobs with any of the following status to retry: %s' % '|'.join(status_retry))
+        jobs = filter_jobs(jobs, 'status', '|'.join(status_retry))
 
         if not jobs:
             print('No job to retry, exiting ...')
