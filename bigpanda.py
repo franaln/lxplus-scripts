@@ -20,24 +20,27 @@ Download usage:
 Print/Filter/Sort usage:
 
     bigpanda.py [-o jobs.json] [-n|--taskname XXX] [-s|--status done] [--sort taskname]
+
+Retry/kill jobs using pbook
+
+    bigpanda.py -n xxx -s xxx --retry/--kill
 '''
 
-parser = argparse.ArgumentParser(description='Show jobs from bigpanda', usage=usage())
+parser = argparse.ArgumentParser(description='', usage=usage())
 
-parser.add_argument('-o', dest='jobs_file', help='Jobs file (default: ~/jobs.json)')
+parser.add_argument('-o', dest='jobs_file', help='Jobs file (default: ~/.bigpanda_jobs.json)')
 
 # Bigpanda download
 parser.add_argument('-d', '--download', dest='download_jobs', action='store_true', help='Force download of jobs information from bigpanda')
 parser.add_argument('-u', dest='username', default=os.environ['USER'], help='Username (default: $USER)')
 parser.add_argument('-f', dest='download_filter', help='Download only tasks with name matching this (default: user.USERNAME.*)')
-parser.add_argument('--days', dest='days_filter', default='15', help='Download tasks for the last X days (default: 15)')
+parser.add_argument('--days', dest='days_filter', default='15', help='Download tasks for the last N days (default: 15)')
 
 # Filter
 parser.add_argument('--db', dest='use_existing_db', action='store_true', help='Use existing db')
 parser.add_argument('-i', '--taskid',   dest='taskid',   help='Filter by taskid')
 parser.add_argument('-n', '--taskname', dest='taskname', help='Filter by taskname')
 parser.add_argument('-s', '--status',   dest='status',   help='Filter by status')
-parser.add_argument('--invtaskname', dest='invtaskname', help='')
 
 # Sort
 parser.add_argument('--sort', dest='sort', default='jeditaskid',  help='Sort by taskname/status (default: jeditaskid)')
@@ -111,7 +114,7 @@ if need_download:
         cmd2 = 'ssh {USER}@lxplus.cern.ch "curl -b {COOKIE_FILE} -H \'Accept: application/json\' -H \'Content-Type: application/json\' "https://bigpanda.cern.ch/tasks/?taskname={TASK}&days={DAYS}\&json""'.format(USER=args.username, COOKIE_FILE=cookie_file, TASK=filter_str, DAYS=args.days_filter)
 
     if not args.download_list:
-        print('> Downloading jobs from bigpanda...')
+        print('# Downloading jobs from bigpanda...')
 
     output = subprocess.check_output(cmd2, shell=True)
 
@@ -123,7 +126,7 @@ if need_download:
 
 else:
     if not args.download_list:
-        print('> Using existing jobs db...')
+        print('# Using existing jobs db...')
 
 
 
@@ -298,25 +301,26 @@ jobs = sorted(jobs, key=lambda t: t[args.sort])
 if args.retry or args.kill:
 
     if not jobs:
-        print('No job selected, exiting ...')
+        print('\033[0;31mNo job selected, exiting ...\033[0m')
         sys.exit(1)
 
-    if args.retry:
-        print('Filtering jobs with any of the following status to retry: %s' % '|'.join(status_retry))
+    if args.status is None and args.retry:
+        print('# Filtering jobs with any of the following status to retry: %s' % '|'.join(status_retry))
         jobs = filter_jobs(jobs, 'status', '|'.join(status_retry))
 
         if not jobs:
-            print('No job to retry, exiting ...')
+            print('\033[0;31mNo job to retry, exiting ...\033[0m')
             sys.exit(1)
 
-
-    for j in jobs:
-        print_job(j)
 
     if args.retry:
         pbook_cmd = 'retry'
     elif args.kill:
         pbook_cmd = 'kill'
+
+    print('# Running pbook %s for the following jobs' % pbook_cmd)
+    for j in jobs:
+        print_job(j)
 
     run_pbook(pbook_cmd, jobs)
 
