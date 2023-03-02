@@ -13,13 +13,18 @@ def usage(name=None):
     return '''bigpanda.py
 -----------
 
-Download usage:
+Common usage:
 
-    bigpanda.py -d [-u USERNAME] [-o jobs.json] [-f "user.username.*"] [--days days]
+    bigpanda.py --stats
 
-Print/Filter/Sort usage:
 
-    bigpanda.py [-o jobs.json] [-n|--taskname XXX] [-s|--status done] [--sort taskname]
+Extra options to download db from bigpanda:
+
+    bigpanda.py -u USERNAME -f "user.username.*" -d days -o jobs.txt
+
+Filter options:
+
+    bigpanda.py -n v210 -s done
 
 Retry/kill jobs using pbook
 
@@ -30,14 +35,15 @@ parser = argparse.ArgumentParser(description='', usage=usage())
 
 parser.add_argument('-o', dest='jobs_file', help='Jobs file (default: ~/.bigpanda_jobs.json)')
 
+parser.add_argument('--download', dest='download_jobs', action='store_true', help='Force download of jobs information from bigpanda')
+parser.add_argument('--db',  dest='use_existing_db', action='store_true', help='Use existing db')
+
 # Bigpanda download
-parser.add_argument('-d', '--download', dest='download_jobs', action='store_true', help='Force download of jobs information from bigpanda')
 parser.add_argument('-u', dest='username', default=os.environ['USER'], help='Username (default: $USER)')
 parser.add_argument('-f', dest='download_filter', help='Download only tasks with name matching this (default: user.USERNAME.*)')
-parser.add_argument('--days', dest='days_filter', default='15', help='Download tasks for the last N days (default: 15)')
+parser.add_argument('-d', dest='days_filter', default='30', help='Download tasks for the last N days (default: 30)')
 
 # Filter
-parser.add_argument('--db', dest='use_existing_db', action='store_true', help='Use existing db')
 parser.add_argument('-i', '--taskid',   dest='taskid',   help='Filter by taskid')
 parser.add_argument('-n', '--taskname', dest='taskname', help='Filter by taskname')
 parser.add_argument('-s', '--status',   dest='status',   help='Filter by status')
@@ -54,8 +60,8 @@ parser.add_argument('--retry',  dest='retry', action='store_true', help='Retry s
 parser.add_argument('--kill',  dest='kill', action='store_true', help='Kill selected jobs using pbook')
 
 ## for download
-parser.add_argument('--dw', dest='download_list', action='store_true', help='Show taskname only')
-parser.add_argument('--ext', dest='output_extension', help='Add extension to taskname (for download file)')
+parser.add_argument('--dw', dest='download_list', action='store_true', help='Show taskname only (useful to create file to download using rucio_dw.py')
+parser.add_argument('--ext', dest='output_extension', help='Add extension to taskname (use with --dw)')
 parser.add_argument('--list',  dest='show_list', action='store_true', help='Show id lists')
 
 # Others
@@ -109,7 +115,7 @@ if need_download:
     # Download jobs data
     filter_str = 'user.%s*' % args.username if args.download_filter is None else args.download_filter
     if in_lxplus:
-        cmd2 = 'curl -b {COOKIE_FILE} -H \'Accept: application/json\' -H \'Content-Type: application/json\' "https://bigpanda.cern.ch/tasks/?taskname={TASK}&days={DAYS}&json"'.format(COOKIE_FILE=cookie_file, TASK=filter_str, DAYS=args.days_filter)
+        cmd2 = 'curl --progress-bar -b {COOKIE_FILE} -H \'Accept: application/json\' -H \'Content-Type: application/json\' "https://bigpanda.cern.ch/tasks/?taskname={TASK}&days={DAYS}&json"'.format(COOKIE_FILE=cookie_file, TASK=filter_str, DAYS=args.days_filter)
     else:
         cmd2 = 'ssh {USER}@lxplus.cern.ch "curl -b {COOKIE_FILE} -H \'Accept: application/json\' -H \'Content-Type: application/json\' "https://bigpanda.cern.ch/tasks/?taskname={TASK}&days={DAYS}\&json""'.format(USER=args.username, COOKIE_FILE=cookie_file, TASK=filter_str, DAYS=args.days_filter)
 
