@@ -283,7 +283,7 @@ jobs = json.load(open(jobs_file))
 
 # Filter broken jobs if requested
 if args.ignore_broken:
-    jobs = [ j for j in jobs if j['status'] == 'broken' ]
+    jobs = [ j for j in jobs if j['status'] != 'broken' ]
 
 # Filter task name
 if args.taskname is not None:
