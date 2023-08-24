@@ -10,24 +10,21 @@ import subprocess
 from datetime import datetime
 
 def usage(name=None):
-    return '''bigpanda.py
+    return '''
+bigpanda.py
 -----------
 
 Common usage:
-
     bigpanda.py --stats
 
 
 Extra options to download db from bigpanda:
-
     bigpanda.py -u USERNAME -f "user.username.*" -d days -o jobs.txt
 
 Filter options:
-
     bigpanda.py -n v210 -s done
 
 Retry/kill jobs using pbook
-
     bigpanda.py -n xxx -s xxx --retry/--kill
 '''
 
@@ -109,12 +106,12 @@ if need_download:
     # Download cookie
     if not in_lxplus:
         os.system('ssh {USERNAME}@lxplus.cern.ch "cern-get-sso-cookie -u https://bigpanda.cern.ch/ -o {COOKIE_FILE};"'.format(USERNAME=args.username, COOKIE_FILE=cookie_file))
-    elif not os.path.isfile('bigpanda.cookie.txt'):
+    elif not os.path.isfile(cookie_file):
         os.system('cern-get-sso-cookie -u https://bigpanda.cern.ch/ -o {COOKIE_FILE};'.format(COOKIE_FILE=cookie_file))
 
     # Download jobs data
     filter_str = 'user.%s*' % args.username if args.download_filter is None else args.download_filter
-    if in_lxplus:
+    if in_lxplus or in_container:
         cmd2 = 'curl --progress-bar -b {COOKIE_FILE} -H \'Accept: application/json\' -H \'Content-Type: application/json\' "https://bigpanda.cern.ch/tasks/?taskname={TASK}&days={DAYS}&json"'.format(COOKIE_FILE=cookie_file, TASK=filter_str, DAYS=args.days_filter)
     else:
         cmd2 = 'ssh {USER}@lxplus.cern.ch "curl -b {COOKIE_FILE} -H \'Accept: application/json\' -H \'Content-Type: application/json\' "https://bigpanda.cern.ch/tasks/?taskname={TASK}&days={DAYS}\&json""'.format(USER=args.username, COOKIE_FILE=cookie_file, TASK=filter_str, DAYS=args.days_filter)
@@ -200,7 +197,7 @@ def print_job(j, show_link=False):
         print('\033[0;32m%s\033[0m' % job_text)
     elif int(nfiles_failed) > 0 and j['status'] in status_running:
         print('\033[0;33m%s\033[0m' % job_text)
-    elif int(nfiles_failed) > 0:
+    elif int(nfiles_failed) > 0 or j['status'] == 'broken':
         print('\033[0;31m%s\033[0m' % job_text)
     else:
         print(job_text)
